@@ -1,10 +1,13 @@
 package sudoku.userinterface;
 
+import javafx.geometry.Pos;
+import javafx.scene.layout.Background;
 import javafx.scene.shape.Rectangle;
 import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import sudoku.problemDomain.Cordinates;
 import sudoku.problemDomain.SudokuGame;
@@ -55,14 +58,76 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
         drawTextFields(root);
         drawGridLines(root);
         stage.show();
+    }
 
+    /**
+     * Background of the main window
+     * @param root
+     */
+    private void drawBackGround(Group root) {
+        //start position for drawing numbers
+        final int xOrigin = 50;
+        final int yOrigin = 50;
+
+        //increment value for each loop
+        final int xAndYDelta = 64;
+
+        //O(n^2) Runtime Complexity - 9x9 = 81 in this case
+        for (int xIndex = 0; xIndex < 9; xIndex++) {
+            for (int yIndex = 0; yIndex < 9; yIndex++) {
+                int x = xOrigin +xIndex * xAndYDelta;
+                int y = yOrigin + yIndex * xAndYDelta;
+                //draw it
+                SudokuTextField title = new SudokuTextField(xIndex, yIndex);
+
+                //style information
+                styleSudokuTile(title, x, y);
+
+                //listening on user input, implements EventHandler<ActionEvent>
+                //passing "this" - current instance of UserInterFaceImpl will result
+                //in invoking handle(ActionEvent actionEvent) method
+                title.setOnKeyPressed(this);
+
+                textFieldCoordinates.put(new Cordinates(xIndex, yIndex), title);
+
+                root.getChildren().add(title);
+            }
+        }
     }
-    private void drawTextFields(Group root) {
+
+    /**
+     * Helper metthod for styling a sudoku title number
+     * @param title
+     * @param x
+     * @param y
+     */
+    private void styleSudokuTile(SudokuTextField title, int x, int y) {
+        Font numberFont = new Font (32);
+
+        title.setFont(numberFont);
+        title.setAlignment(Pos.CENTER);
+
+        title.setLayoutX(x);
+        title.setPrefHeight(64);
+        title.setPrefWidth(64);
+        title.setBackground(Background.EMPTY); //transparent
     }
+
     private void drawTitle(Group root) {
     }
 
+    /**
+     * Background of sudokuboard, offset from the window by BOARD_PADDING
+     * @param root
+     */
     private void drawSudokuBoard(Group root) {
+        Rectangle boardBackground = new Rectangle();
+        boardBackground.setX(BOARD_PADDING);
+        boardBackground.setY(BOARD_PADDING);
+        boardBackground.setWidth(BOARD_X_AND_Y);
+        boardBackground.setHeight(BOARD_X_AND_Y);
+        boardBackground.setFill(BOARD_BACKGROUND_COLOR);
+        root.getChildren().add(boardBackground);
     }
 
     /**
@@ -84,8 +149,21 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
                     BOARD_PADDING,
                     BOARD_X_AND_Y,
                     gridLineThickness
-        );
+             );
+            Rectangle horizontalLine = getLine(
+                    BOARD_PADDING,
+                    xAndY + 64 * index,
+                    gridLineThickness,
+                    BOARD_X_AND_Y
+            );
+            root.getChildren().addAll(
+                    verticalLine,
+                    horizontalLine
+            );
+            index++;
         }
+    }
+    private void drawTextFields(Group root) {
     }
     /**
      * Method to reduce repetitious code.
@@ -96,7 +174,7 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
     private Rectangle getLine(double x,
                               double y,
                               double height,
-                              int width) {
+                              double width) {
         Rectangle line = new Rectangle();
         line.setX(x);
         line.setX(y);
@@ -105,11 +183,6 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
         line.setFill(Color.BLACK);
         return line;
     }
-
-    private void drawBackGround(Group root) {
-
-    }
-    
 
     @Override
     public void handle(KeyEvent keyEvent) {
