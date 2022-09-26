@@ -1,6 +1,10 @@
 package sudoku.userinterface;
 
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Background;
 import javafx.scene.shape.Rectangle;
 import javafx.event.EventHandler;
@@ -8,10 +12,14 @@ import javafx.scene.Group;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
+import javafx.scene.text.Text;
+import javafx.scene.control.TextField;
 import javafx.stage.Stage;
+import sudoku.constants.GameState;
 import sudoku.problemDomain.Cordinates;
 import sudoku.problemDomain.SudokuGame;
 
+import java.awt.*;
 import java.util.HashMap;
 
 /**
@@ -27,7 +35,7 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
     private HashMap<Cordinates, SudokuTextField> textFieldCoordinates;
 
     //Controller/presenter - passing value between frontend and backend:
-    private IUserInterfaceContract.EventListenr listener;
+    private IUserInterfaceContract.EventListener listener;
 
     //For single IU screen it is ok to initialise a style information
     //if more than one screen, move to a class
@@ -52,7 +60,7 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
     }
 
     private void initialiseUserInterFace() {
-        drawBackGround(root);
+        drawBackground();
         drawTitle(root);
         drawSudokuBoard(root);
         drawTextFields(root);
@@ -60,11 +68,18 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
         stage.show();
     }
 
+    private void drawBackground() {
+        Scene scene = new Scene(root, WINDOW_X, WINDOW_Y);
+        scene.setFill(WINDOW_BACKGROUND_COLOR);
+        stage.setScene(scene);
+    }
+
     /**
-     * Background of the main window
+     * 1. Draw each TextField based on x and y values.
+     * 2. Add TextField condinates (x,y) to the HashMap
      * @param root
      */
-    private void drawBackGround(Group root) {
+    private void drawTextFields(Group root) {
         //start position for drawing numbers
         final int xOrigin = 50;
         final int yOrigin = 50;
@@ -96,7 +111,7 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
     }
 
     /**
-     * Helper metthod for styling a sudoku title number
+     * Helper method for styling a sudoku title number
      * @param title
      * @param x
      * @param y
@@ -113,7 +128,17 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
         title.setBackground(Background.EMPTY); //transparent
     }
 
+    /**
+     * Title that goes below sudoku game
+     * @param root
+     */
     private void drawTitle(Group root) {
+        Text title = new Text(235, 690, SUDOKU);
+        title.setFill(Color.WHITE);
+        Font titleFont = new Font(43);
+        title.setFont(titleFont);
+        root.getChildren().add(title);
+
     }
 
     /**
@@ -163,9 +188,7 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
             index++;
         }
     }
-    private void drawTextFields(Group root) {
-    }
-    /**
+     /**
      * Method to reduce repetitious code.
      *
      * X, Y, Height, Width,
@@ -185,32 +208,90 @@ public class UserInterfaceImpl implements IUserInterfaceContract.UserView, Event
     }
 
     @Override
-    public void handle(KeyEvent keyEvent) {
+    public void handle(KeyEvent event) {
+        if (event.getEventType() == KeyEvent.KEY_PRESSED) {
+            if (event.getText().matches("[0-9]")) {
+                int value = Integer.parseInt(event.getText());
+                handleInput(value, event.getSource());
+            } else if (event.getCode() == KeyCode.BACK_SPACE) {
+                handleInput(0, event.getSource());
+            } else {
+                ((TextField) event.getSource()).setText("");
+            }
+        }
+        event.consume(); //not to propage through the rest of the application
+    }
 
+    private void handleInput(int value, Object source) {
+        listener.onSudokuInput(
+                ((SudokuTextField) source).getX(),
+                ((SudokuTextField) source).getY(),
+                value
+        );
     }
 
     @Override
-    public void setListener(IUserInterfaceContract.EventListenr listener) {
+    public void setListener(IUserInterfaceContract.EventListener listener) {
 
     }
 
+    /**
+     * Update UI each time the user enter data (which can be 0 to delete a number)
+     * @param x
+     * @param y
+     * @param input
+     */
     @Override
     public void updateSquare(int x, int y, int input) {
+        SudokuTextField title = textFieldCoordinates.get(new Cordinates(x,y));
+        String value = Integer.toString(input);
 
+        if(value.equals("0")) value = "";
+
+        title.textProperty().setValue(value);
     }
 
     @Override
     public void updateBoard(SudokuGame game) {
+        for(int xIndex = 0; xIndex <9; xIndex++){
+            for (int yIndex = 0; yIndex < 9; yIndex++){
+                TextField tile = textFieldCoordinates.get(new Cordinates(xIndex, yIndex));
 
+                String value = Integer.toString(
+                        game.getCopyOfGridState()[xIndex][yIndex] //immutable copy
+                );
+                if(value.equals("0")) value = "";
+
+                tile.setText(value);
+
+                if(game.getGameState() == GameState.NEW){
+                    if(value.equals("")) {
+                        //using CSS to highlight empty squares
+                        tile.setStyle("-fx-opacity: 1;");
+                        tile.setDisable(false);
+                    }else{
+                        tile.setStyle("-fx-opacity: 0.8;");
+                        tile.setDisable(true);
+                    }
+                }
+            }
+        }
     }
 
+    /**
+     * When game logic indicates that the game completed properly, alert is shown
+     * @param message
+     */
     @Override
     public void showDialog(String message) {
+        Alert dialog = new Alert(Alert.AlertType.CONFIRMATION, message, ButtonType.OK);
 
+        if (dialog.getResult() == ButtonType.OK) listener.onDialogClick();
     }
 
     @Override
     public void showError(String message) {
-
+        Alert dialog = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
+        dialog.showAndWait();
     }
 }
